@@ -107,7 +107,7 @@ namespace SFA.DAS.Payments.RequiredPayments.Application.Processors
                         }
                     }
 
-                    if (requiredPayments.Sum(x => x.Amount) == 0)
+                    if (requiredPayments.All(rp=>rp.Amount == 0m))
                     {
                         continue;
                     }

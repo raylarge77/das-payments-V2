@@ -1561,6 +1561,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>PV2-332 - Levy 16-18 learner with a small employer at start.feature</DependentUpon>
     </Compile>
+    <Compile Include="Tests\Small Employer\PV2-1032 - Levy 19-24 learner moves to small employer creates refund.feature.cs">
+      <DependentUpon>PV2-1032 - Levy 19-24 learner moves to small employer creates refund.feature</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
     <Compile Include="Tests\Small Employer\PV2-346 - Levy 19-24 learner with EHC plan with a small employer at start.feature.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -2564,6 +2569,10 @@
     <None Include="Tests\Small Employer\PV2-332 - Levy 16-18 learner with a small employer at start.feature">
       <Generator>SpecFlowSingleFileGenerator</Generator>
       <LastGenOutput>PV2-332 - Levy 16-18 learner with a small employer at start.feature.cs</LastGenOutput>
+    </None>
+    <None Include="Tests\Small Employer\PV2-1032 - Levy 19-24 learner moves to small employer creates refund.feature">
+      <Generator>SpecFlowSingleFileGenerator</Generator>
+      <LastGenOutput>PV2-1032 - Levy 19-24 learner moves to small employer creates refund.feature.cs</LastGenOutput>
     </None>
     <None Include="Tests\Small Employer\PV2-346 - Levy 19-24 learner with EHC plan with a small employer at start.feature">
       <Generator>SpecFlowSingleFileGenerator</Generator>
