@@ -24,7 +24,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DCT.TestDataGenerator;
 using ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Abstract;
+using Newtonsoft.Json;
 using SFA.DAS.Payments.AcceptanceTests.Core.Services;
 using TechTalk.SpecFlow;
 using TechTalk.SpecFlow.Assist;
@@ -33,7 +35,9 @@ using Payment = SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data.Payment;
 using PriceEpisode = ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Output.PriceEpisode;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers;
 using SFA.DAS.Payments.DataLocks.Messages.Events;
+using SFA.DAS.Payments.EarningEvents.Messages.Events;
 using SFA.DAS.Payments.Monitoring.Jobs.Client;
+using LearningDelivery = ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Output.LearningDelivery;
 
 namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
 {
@@ -131,7 +135,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             {
                 ilrLearner.Ukprn = ukprn;
                 var learner = TestSession.GetLearner(ukprn, ilrLearner.LearnerId);
-                learner.Course.AimSeqNumber = (short) ilrLearner.AimSequenceNumber;
+                learner.Course.AimSeqNumber = (short)ilrLearner.AimSequenceNumber;
                 learner.Course.StandardCode = ilrLearner.StandardCode;
                 learner.Course.FundingLineType = ilrLearner.FundingLineType;
                 learner.Course.LearnAimRef = ilrLearner.AimReference;
@@ -1223,9 +1227,57 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
                     learners.Add(learner);
                 }
             }
+
             var dcHelper = Scope.Resolve<IDcHelper>();
-            await dcHelper.SendIlrSubmission(learners, provider.Ukprn, AcademicYear, CollectionPeriod,
-                provider.JobId);
+
+            if (learners.First()
+                    .PriceEpisodes.Last()
+                    .PriceEpisodeValues.PriceEpisodeContractType != GetContractTypeDescription(ContractType.Act1))
+            {
+                return;
+            }
+
+            var tasks = new List<Task>();
+
+            var db = Scope.Resolve<TestPaymentsDataContext>();
+            var approvalsList = await db.Apprenticeship.AsNoTracking()
+                .Where(a => a.Uln == learners.First().ULN)
+                .ToListAsync();
+
+            for (var learnerIndex = 1; learnerIndex < 15000; learnerIndex++)
+            {
+                var fm36 = new FM36Learner
+                {
+                    ULN = TestSession.GenerateId(99999999),
+                    LearnRefNumber = learners.First().LearnRefNumber,
+                    LearningDeliveries = learners.First().LearningDeliveries,
+                    PriceEpisodes = learners.First().PriceEpisodes,
+                    HistoricEarningOutputValues = learners.First().HistoricEarningOutputValues
+                };
+
+                db.Apprenticeship.AddRange(approvalsList.Select(x =>
+                {
+                    var apprenticeship = JsonConvert.DeserializeObject<ApprenticeshipModel>(x.ToJson());
+                    apprenticeship.Id = fm36.ULN;
+                    apprenticeship.Uln = fm36.ULN;
+                    x.ApprenticeshipPriceEpisodes.ForEach(o =>
+                    {
+                        o.ApprenticeshipId = fm36.ULN;
+                        o.Id = 0;
+                    });
+                    return apprenticeship;
+                }));
+
+                await db.SaveChangesAsync();
+
+                tasks.Add(SendProcessLearnerCommand(fm36));
+            }
+
+            for (TestSession.Provider.JobId = 1; provider.JobId <= 2; TestSession.Provider.JobId++)
+            {
+                await Task.WhenAll(tasks);
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
 
         }
 
