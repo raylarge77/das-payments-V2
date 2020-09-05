@@ -1,3 +1,4 @@
+@supports_dc_e2e
 @basic_day
 Feature:One levy learner finishes on time not enough levy to cover full payment-PV2-266
 

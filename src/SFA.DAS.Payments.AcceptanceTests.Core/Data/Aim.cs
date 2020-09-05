@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using SFA.DAS.Payments.Tests.Core;
+using System.Linq;
+using SFA.DAS.Payments.Model.Core.Entities;
 
 namespace SFA.DAS.Payments.AcceptanceTests.Core.Data
 {
@@ -15,6 +16,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Data
             LearnerId = training.LearnerId;
             AimReference = training.AimReference;
             StartDate = training.StartDate;
+            OriginalStartDate = training.OriginalStartDate;
             PlannedDuration = training.PlannedDuration;
             ActualDuration = training.ActualDuration;
             AimSequenceNumber = training.AimSequenceNumber;
@@ -24,6 +26,12 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Data
             PathwayCode = training.PathwayCode;
             FundingLineType = training.FundingLineType;
             CompletionStatus = CompletionStatusFromString(training.CompletionStatus);
+            LearningSupportCode = training.LearningSupportCode;
+            LearningSupportDateFrom = training.LearningSupportDateFrom;
+            LearningSupportDateTo = training.LearningSupportDateTo;
+            FundingAdjustmentForPriorLearning = training.FundingAdjustmentForPriorLearning;
+            ContractType = training.ContractType;
+            Restart = training.Restart;
         }
 
         CompletionStatus CompletionStatusFromString(string completionStatus)
@@ -47,6 +55,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Data
         public string LearnerId { get; set; }
         public string AimReference { get; set; }
         public string StartDate { get; set; }
+        public string OriginalStartDate { get; set; }
         public string PlannedDuration { get; set; }
         public TimeSpan? PlannedDurationAsTimespan => PlannedDuration.ToTimeSpan(StartDate);
         public string ActualDuration { get; set; }
@@ -61,6 +70,33 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Data
         public int FrameworkCode { get; set; }
         public int PathwayCode { get; set; }
 
+        public int? LearningSupportCode { get; set; }
+        public string LearningSupportDateFrom { get; set; }
+        public string LearningSupportDateTo { get; set; }
+
+        public string FundingAdjustmentForPriorLearning { get; set; }
+
+        public bool Restart { get; set; }
+
         public bool IsMainAim => AimReference == "ZPROG001";
+
+        public bool IsMathsAndEnglish => MathsAndEnglishAimReferenceCodes.Contains(AimReference);
+
+        public bool HasContractType => (int) ContractType != 0;
+
+        public ContractType ContractType { get; set; }
+
+        private static IEnumerable<string> MathsAndEnglishAimReferenceCodes =>
+            new[]
+            {
+                "50086832",
+                "50089638",
+                "50091268",
+                "50093186",
+                "50094695",
+                "50098342",
+                "50098342",
+                "50114979"
+            };
     }
 }

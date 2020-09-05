@@ -21,7 +21,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Automation
 
         public LearnRefNumberGenerator LearnRefNumberGenerator { get; }
         public string SessionId { get; }
-        public List<Learner> Learners { get; }
+        public List<Learner> Learners { get; private set; }
         public Learner Learner => GetLearner(Provider.Ukprn, LearnerIdentifierA);
         public Employer Employer => GetEmployer(TestEmployer);
 
@@ -91,6 +91,11 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Automation
             Apprenticeships = new ConcurrentDictionary<string, ApprenticeshipModel>();
         }
 
+        public void ClearLearnersExcept(List<Learner> learners)
+        {
+            Learners = Learners.Where(l => learners.Exists(e => e.Ukprn == l.Ukprn && e.LearnerIdentifier == l.LearnerIdentifier)).ToList();
+        }
+
         public long GenerateId(int maxValue = 1000000)
         {
             var id = random.Next(maxValue);
@@ -138,12 +143,12 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Automation
             return string.IsNullOrEmpty(learnerId) ? Learner.LearnRefNumber : LearnRefNumberGenerator.Generate(Ukprn, learnerId);
         }
 
-        public Learner GenerateLearner(long ukprn, long uln = 0)
+        public Learner GenerateLearner(long ukprn, long uln = 0, string identifier = null)
         {
             return new Learner
             {
                 Ukprn = ukprn,
-                Uln = uln != 0 ? uln : ulnService.GenerateUln(Provider.Ukprn),
+                Uln = uln != 0 ? uln : ulnService.GenerateUln(Provider.Ukprn, identifier),
                 LearnRefNumber = GenerateId().ToString(),
                 Course = CourseFaker.Generate(1).FirstOrDefault()
             };
@@ -156,7 +161,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core.Automation
 
             if (learner == null)
             {
-                learner = GenerateLearner(ukprn, learnerUln?? 0);
+                learner = GenerateLearner(ukprn, learnerUln?? 0, learnerIdentifier);
                 learner.LearnerIdentifier = learnerIdentifier;
                 Learners.Add(learner);
             }

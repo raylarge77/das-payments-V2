@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
+using ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Abstract;
 using ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Output;
 using Microsoft.EntityFrameworkCore;
 using NServiceBus;
@@ -9,31 +14,24 @@ using SFA.DAS.Payments.AcceptanceTests.Core.Data;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.EventMatchers;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Extensions;
+using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers;
 using SFA.DAS.Payments.Application.Repositories;
 using SFA.DAS.Payments.Core;
+using SFA.DAS.Payments.DataLocks.Messages.Events;
 using SFA.DAS.Payments.EarningEvents.Messages.Internal.Commands;
 using SFA.DAS.Payments.FundingSource.Messages.Internal.Commands;
 using SFA.DAS.Payments.Model.Core;
 using SFA.DAS.Payments.Model.Core.Entities;
 using SFA.DAS.Payments.Model.Core.Incentives;
-using SFA.DAS.Payments.Monitoring.Jobs.Messages.Commands;
 using SFA.DAS.Payments.ProviderPayments.Messages.Internal.Commands;
 using SFA.DAS.Payments.Tests.Core;
 using SFA.DAS.Payments.Tests.Core.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Abstract;
 using SFA.DAS.Payments.AcceptanceTests.Core.Services;
 using TechTalk.SpecFlow;
 using TechTalk.SpecFlow.Assist;
 using Learner = SFA.DAS.Payments.AcceptanceTests.Core.Data.Learner;
 using Payment = SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data.Payment;
 using PriceEpisode = ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Output.PriceEpisode;
-using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers;
-using SFA.DAS.Payments.DataLocks.Messages.Events;
-using SFA.DAS.Payments.Monitoring.Jobs.Client;
 
 namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
 {
@@ -139,7 +137,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
                 learner.Course.ProgrammeType = ilrLearner.ProgrammeType;
                 learner.Course.FrameworkCode = ilrLearner.FrameworkCode;
                 learner.Course.PathwayCode = ilrLearner.PathwayCode;
-                learner.SmallEmployer = ilrLearner.SmallEmployer;
+                learner.EefCode = ilrLearner.EefCode;
                 learner.PostcodePrior = ilrLearner.PostcodePrior;
 
                 if (ilrLearner.Uln != default(long))
@@ -1261,10 +1259,10 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             {
                 ProvidersWithCacheCleared = new HashSet<(byte period, int academicYear, long)>();
 
-                TestSession.Providers.ForEach(p =>
+                foreach (var testSessionProvider in TestSession.Providers)
                 {
-                    ProvidersWithCacheCleared.Add((collectionPeriod.Period, collectionPeriod.AcademicYear, p.Ukprn));
-                });
+                    ProvidersWithCacheCleared.Add((collectionPeriod.Period, collectionPeriod.AcademicYear, testSessionProvider.Ukprn));
+                }
             }
 
             //TODO: Is this still required?
@@ -1402,11 +1400,45 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             }
         }
 
-        protected async Task SubmitIlrInPeriod(string collectionPeriodText, FeatureNumber featureNumber)
+        //protected async Task SubmitIlrInPeriod(string collectionPeriodText, FeatureNumber featureNumber)
+        //{
+        //    Task ClearCache() => HandleIlrReSubmissionForTheLearners(collectionPeriodText, TestSession.Provider);
+        //    await Scope.Resolve<IIlrService>().PublishLearnerRequest(CurrentIlr, TestSession.Learners, collectionPeriodText, featureNumber.Extract(), ClearCache);
+        //}
+
+
+        protected void AddEmploymentStatus(IEnumerable<EmploymentStatusMonitoring> employmentStatusMonitorings)
         {
-            Task ClearCache() => HandleIlrReSubmissionForTheLearners(collectionPeriodText, TestSession.Provider);
-            await Scope.Resolve<IIlrService>().PublishLearnerRequest(CurrentIlr, TestSession.Learners, collectionPeriodText, featureNumber.Extract(), ClearCache);
+            if (TestSession.AtLeastOneScenarioCompleted)
+            {
+                return;
+            }
+
+            var allEsmsPerLearner = employmentStatusMonitorings.GroupBy(a => a.LearnerId);
+
+            foreach (var learnerEsms in allEsmsPerLearner)
+            {
+                var learner = TestSession.Learners.FirstOrDefault(x => x.LearnerIdentifier == learnerEsms.Key && x.Ukprn == TestSession.Provider.Ukprn);
+                if (learner == null)
+                {
+                    throw new Exception("There is an employmentStatusMonitoring without a matching learner");
+                }
+
+                learner.EmploymentStatusMonitoring.Clear();
+
+                learner.EmploymentStatusMonitoring.AddRange(employmentStatusMonitorings);
+            }
         }
 
+        protected void AddAppEarnHistoryToLearner(AdditionalIlrData additionalIlrData)
+        {
+            if (TestSession.AtLeastOneScenarioCompleted)
+            {
+                return;
+            }
+
+            var history = new LearnerEarningsHistory(additionalIlrData, PreviousEarnings);
+            TestSession.Learners.Single(l => l.Ukprn == TestSession.Provider.Ukprn).EarningsHistory = history;
+        }
     }
 }

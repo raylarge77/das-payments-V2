@@ -1,3 +1,4 @@
+@supports_dc_e2e
 @basic_day
 Feature: Two levy learners but only enough levy to fund one learner- PV2-264
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ESFA.DC.ILR.FundingService.FM36.FundingOutput.Model.Output;
+using Microsoft.EntityFrameworkCore.Internal;
 using SFA.DAS.Payments.Tests.Core;
 
 namespace SFA.DAS.Payments.AcceptanceTests.Core
@@ -70,6 +71,17 @@ namespace SFA.DAS.Payments.AcceptanceTests.Core
         public static void SetValue(this PriceEpisodePeriodisedValues values, int period, decimal? value)
         {
             GetPropertyInfo(period).SetValue(values, value);
+        }
+
+        public static int ToEmployerAccountId(this string employer)
+        {
+            switch (employer)
+            {
+                case "employer 2":
+                    return 913703206;
+                default:
+                    return 154549452;
+            }
         }
 
         private static PropertyInfo GetPropertyInfo(int period)

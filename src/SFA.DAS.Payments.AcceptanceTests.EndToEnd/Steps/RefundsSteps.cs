@@ -61,7 +61,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             var provider = TestSession.GetProviderByIdentifier(providerIdentifier);
             var previousProviderEarnings = CreateEarnings(table, provider.Ukprn);
 
-            if(PreviousEarnings == null) PreviousEarnings = new List<Earning>();
+            if (PreviousEarnings == null) PreviousEarnings = new List<Earning>();
 
             PreviousEarnings.AddRange(previousProviderEarnings);
 
@@ -95,9 +95,20 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
         [Given("the Provider now changes the Learner's ULN to \"(.*)\"")]
         public void TheProviderChangesTheLearnersUln(long newUln)
         {
-            TestSession.GetLearner(TestSession.Provider.Ukprn, null).Uln = newUln;
-            CurrentIlr = PreviousIlr;
-            CurrentIlr.ForEach(x => x.Uln = newUln);
+            CurrentIlr = PreviousIlr; 
+            if (Config.ValidateDcAndDasServices)
+            {
+                var learner = TestSession.GetLearner(TestSession.Ukprn, PreviousIlr.Single().LearnerId);
+                learner.OriginalUln = learner.Uln;
+                learner.Uln = Scope.Resolve<IUlnService>().GenerateUln(learner.Ukprn, learner.LearnerIdentifier);
+                CurrentIlr.ForEach(x => x.Uln = learner.Uln);
+            }
+            else
+            {
+                TestSession.GetLearner(TestSession.Provider.Ukprn, null).Uln = newUln;
+                CurrentIlr = PreviousIlr;
+                CurrentIlr.ForEach(x => x.Uln = newUln);
+            }
         }
 
         [When(@"the amended ILR file is re-submitted")]
@@ -117,13 +128,19 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             await GenerateEarnings(TestSession.Provider).ConfigureAwait(false);
         }
 
+        [Given("appEarnHistory is required as follows")]
+        public void AppEarnHistoryIsRequired(Table table)
+        {
+            AddAppEarnHistoryToLearner(table.CreateSet<AdditionalIlrData>().SingleOrDefault());
+        }
+
         [When(@"the amended ILR file is re-submitted for the learners in collection period (.*)")]
         [When(@"the ILR file is submitted for the learners for collection period (.*)")]
         [Given(@"the ILR file is submitted for the learners for collection period (.*)")]
         public async Task WhenIlrFileIsSubmittedForTheLearnersInCollectionPeriod(string collectionPeriodText)
         {
             Task ClearCache() => HandleIlrReSubmissionForTheLearners(collectionPeriodText, TestSession.Provider);
-            await Scope.Resolve<IIlrService>().PublishLearnerRequest(CurrentIlr, TestSession.Learners, collectionPeriodText, featureNumber.Extract(), ClearCache);
+            await Scope.Resolve<IIlrService>().PublishLearnerRequest(PreviousIlr, CurrentIlr, TestSession.Learners, collectionPeriodText, featureNumber.Extract(), ClearCache);
         }
 
         [When(@"the ILR file is submitted for the learners for the collection period (.*) by ""(.*)""")]

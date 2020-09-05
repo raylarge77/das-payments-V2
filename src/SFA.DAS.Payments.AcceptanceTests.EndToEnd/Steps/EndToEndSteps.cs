@@ -1,10 +1,10 @@
-﻿using SFA.DAS.Payments.AcceptanceTests.Core.Data;
-using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data;
-using SFA.DAS.Payments.AcceptanceTests.EndToEnd.EventMatchers;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using SFA.DAS.Payments.AcceptanceTests.Core.Data;
+using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data;
+using SFA.DAS.Payments.AcceptanceTests.EndToEnd.EventMatchers;
+using System.Collections.Generic;
 using Autofac;
 using Microsoft.EntityFrameworkCore;
 using SFA.DAS.Payments.AcceptanceTests.Core.Automation;
@@ -149,7 +149,10 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
         {
             if (!TestSession.AtLeastOneScenarioCompleted)
             {
+                var oldProvider = TestSession.Provider;
+                var learner = TestSession.GetLearner(oldProvider.Ukprn, null);
                 TestSession.RegenerateUkprn();
+                learner.Ukprn = TestSession.Ukprn;
                 AddNewIlr(table, TestSession.Ukprn);
             }
         }
@@ -279,6 +282,13 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Steps
             await dcHelper.SendIlrSubmissionEvent(TestSession.Provider.Ukprn, CurrentCollectionPeriod.AcademicYear,
                 CurrentCollectionPeriod.Period,
                 TestSession.Provider.JobId, true).ConfigureAwait(false);
+        }
+
+        [Given(@"the employment status in the ILR is")]
+        [Given(@"the employment status in the ILR is now")]
+        public void GivenTheEmploymentStatusInTheIlr(Table table)
+        {
+            AddEmploymentStatus(table.CreateSet<EmploymentStatusMonitoring>());
         }
 
         [When(@"the payments service is notified that the subsequent Data-Collections processes failed to process the job")]

@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SFA.DAS.Payments.AcceptanceTests.Core.Automation;
+﻿using SFA.DAS.Payments.AcceptanceTests.Core.Automation;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Data;
 using SFA.DAS.Payments.AcceptanceTests.EndToEnd.Extensions;
 using SFA.DAS.Payments.Application.Repositories;
@@ -7,7 +6,9 @@ using SFA.DAS.Payments.Model.Core.Entities;
 using SFA.DAS.Payments.Tests.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers
 {
@@ -30,7 +31,11 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers
 
             apprenticeship.Status = status;
             apprenticeship.ApprenticeshipPriceEpisodes.ForEach(priceEpisode => priceEpisode.Removed = true);
-            apprenticeship.ApprenticeshipPriceEpisodes.AddRange(priceEpisodes);
+
+            apprenticeship.ApprenticeshipPriceEpisodes.AddRange(priceEpisodes.Where
+                (pe=> !apprenticeship.ApprenticeshipPriceEpisodes.Any
+                (ape=>ape.StartDate == pe.StartDate && ape.Cost == pe.Cost)));
+
             await dataContext.SaveChangesAsync().ConfigureAwait(false);
         }
 
@@ -73,7 +78,7 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers
                 AccountId = apprenticeshipSpec.AccountId,
                 TransferSendingEmployerAccountId = apprenticeshipSpec.SenderAccountId,
                 Uln = apprenticeshipSpec.Uln,
-                FrameworkCode = apprenticeshipSpec.FrameworkCode ?? 0, //TODO change when app bug is fixed
+                FrameworkCode = apprenticeshipSpec.FrameworkCode ?? 0, 
                 ProgrammeType = apprenticeshipSpec.ProgrammeType ?? 0,
                 PathwayCode = apprenticeshipSpec.PathwayCode ?? 0,
                 StandardCode = apprenticeshipSpec.StandardCode ?? 0,
@@ -110,7 +115,8 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Helpers
                 ApprenticeshipId = apprenticeshipSpec.ApprenticeshipId,
                 Cost = apprenticeshipSpec.AgreedPrice,
                 StartDate = startDate,
-                EndDate = endDate
+                EndDate = endDate,
+                Removed = apprenticeshipSpec.Status.ToUpper() != "ACTIVE"
             };
 
         }

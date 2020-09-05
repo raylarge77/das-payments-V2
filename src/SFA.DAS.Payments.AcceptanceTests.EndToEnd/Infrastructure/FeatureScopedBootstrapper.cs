@@ -1,5 +1,8 @@
 ﻿using System;
 using Autofac;
+using Autofac.Core;
+using ESFA.DC.Data.AppsEarningsHistory.Model;
+using Microsoft.EntityFrameworkCore;
 using NServiceBus;
 using SFA.DAS.Payments.AcceptanceTests.Core.Automation;
 using SFA.DAS.Payments.AcceptanceTests.Core.Infrastructure;
@@ -15,9 +18,7 @@ using SFA.DAS.Payments.Messages.Core.Events;
 using SFA.DAS.Payments.Monitoring.Jobs.Data;
 using SFA.DAS.Payments.Monitoring.Jobs.Messages.Commands;
 using SFA.DAS.Payments.ProviderPayments.Messages.Internal.Commands;
-using SFA.DAS.Payments.RequiredPayments.Domain;
 using SFA.DAS.Payments.RequiredPayments.Domain.Services;
-using SFA.DAS.Payments.RequiredPayments.Messages.Events;
 using TechTalk.SpecFlow;
 
 namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Infrastructure
@@ -48,6 +49,20 @@ namespace SFA.DAS.Payments.AcceptanceTests.EndToEnd.Infrastructure
                 .InstancePerLifetimeScope();
 
             DcHelper.AddDcConfig(Builder);
+
+            Builder.RegisterType<ApprenticeshipEarningsHistoryService>()
+                   .As<IApprenticeshipEarningsHistoryService>()
+                   .InstancePerLifetimeScope()
+                   .IfNotRegistered(typeof(IIlrService));
+            Builder.Register(ctx =>
+                             {
+                                 var configHelper = ctx.Resolve<TestsConfiguration>();
+                                 var builder = new DbContextOptionsBuilder<AppEarnHistoryContext>()
+                                     .UseSqlServer(configHelper.AppEarnHistoryConnectionString);
+                                 return new AppEarnHistoryContext(builder.Options);
+                             })
+                   .OnlyIf(x => x.IsRegistered(new TypedService(typeof(IApprenticeshipEarningsHistoryService))))
+                   .InstancePerLifetimeScope();
 
             Builder.RegisterType<IlrDcService>()
                    .As<IIlrService>()

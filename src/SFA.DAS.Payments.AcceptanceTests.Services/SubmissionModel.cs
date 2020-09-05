@@ -1,6 +1,4 @@
-﻿using ESFA.DC.Jobs.Model.Enums;
-
-namespace SFA.DAS.Payments.AcceptanceTests.Services
+﻿namespace SFA.DAS.Payments.AcceptanceTests.Services
 {
     public class SubmissionModel
     {
