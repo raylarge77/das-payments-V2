@@ -14,8 +14,6 @@ using SFA.DAS.Payments.AcceptanceTests.Core.Infrastructure;
 using SFA.DAS.Payments.Monitoring.AcceptanceTests.Handlers;
 using SFA.DAS.Payments.Monitoring.Jobs.Data;
 using SFA.DAS.Payments.Monitoring.Jobs.Model;
-using SFA.DAS.Payments.Monitoring.Metrics.Model.PeriodEnd;
-using SFA.DAS.Payments.Monitoring.Metrics.Model.Submission;
 
 namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
 {
@@ -27,6 +25,8 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
         private const string JobDetailsKey = "job_command";
 
         protected JobsDataContext DataContext;
+
+        protected List<long?> jobIdToBeDeleted = new List<long?>();
 
         protected JobModel Job
         {
@@ -60,15 +60,23 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
         protected string PartitionEndpointName => $"sfa-das-payments-monitoring-jobs{JobDetails.JobId % 2}";
 
         [AfterScenario]
-        public void ClearTestData()
+        public async Task ClearTestData()
         {
-            ClearTestJobs();
+            await ClearTestJobs();
             ClearTestSubmissionMetrics();
         }
 
-        private void ClearTestJobs()
+        private async Task ClearTestJobs()
         {
             DataContext.Jobs.Remove(Job);
+
+            if (jobIdToBeDeleted.Any())
+            {
+                var submissionJob = await DataContext.Jobs.Where(x => jobIdToBeDeleted.Contains(x.DcJobId)).ToListAsync();
+                if (submissionJob.Any())
+                    DataContext.Jobs.RemoveRange(submissionJob);
+
+            }
 
             if (ScenarioContext.Current.ContainsKey(PeriodEndLargeSubmissionJobIdKey))
             {
@@ -77,7 +85,7 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
                     DataContext.Jobs.Remove(submissionJob);
             }
 
-            DataContext.SaveChanges();
+            await DataContext.SaveChangesAsync();
         }
 
         private void ClearTestSubmissionMetrics()
@@ -319,6 +327,8 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
         [When("the submission summary metrics are recorded")]
         public async Task WhenTheSubmissionSummaryMetricsAreRecorded()
         {
+            var jobId = ScenarioContext.Current.ContainsKey(PeriodEndLargeSubmissionJobIdKey) ? PeriodEndLargeSubmissionJobId : JobDetails.JobId;
+
             await DataContext.Database.ExecuteSqlCommandAsync($@"INSERT INTO [Metrics].[SubmissionSummary]
                    ([Ukprn]
                    ,[AcademicYear]
@@ -353,7 +363,7 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
                    ({TestSession.Ukprn}
                    ,1819
                    ,{CollectionPeriod}
-                   ,{JobDetails.JobId}
+                   ,{jobId}
                    ,100
                    ,100
                    ,100
@@ -415,6 +425,30 @@ namespace SFA.DAS.Payments.Monitoring.AcceptanceTests.Jobs
                 StartTime = DateTimeOffset.UtcNow,
                 IlrSubmissionTime = DateTime.UtcNow.AddSeconds(-10),
                 Status = JobStatus.InProgress
+            };
+           await DataContext.SaveNewJob(jobModel);
+        }
+
+        [Given(@"the earnings event service has received and successfully processed a provider earnings job")]
+        public async Task GivenTheEarningsEventServiceHasReceivedAndSuccessfullyProcessedAProviderEarningsJob()
+        {
+            var jobId = TestSession.GenerateId();
+            
+            jobIdToBeDeleted.Add(jobId);
+            
+            var jobModel = new JobModel
+            {
+                Ukprn = TestSession.Ukprn,
+                CollectionPeriod = CollectionPeriod,
+                AcademicYear = 1920,
+                DcJobId = jobId,
+                JobType = JobType.EarningsJob,
+                StartTime = DateTimeOffset.UtcNow.AddSeconds(-20),
+                EndTime = DateTimeOffset.UtcNow.AddSeconds(-10),
+                IlrSubmissionTime = DateTime.UtcNow.AddSeconds(-20),
+                Status = JobStatus.Completed,
+                DcJobSucceeded = true,
+                DcJobEndTime = DateTimeOffset.UtcNow.AddSeconds(-10)
             };
            await DataContext.SaveNewJob(jobModel);
         }

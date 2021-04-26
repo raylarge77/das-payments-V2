@@ -28,7 +28,7 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Data
         Task SaveDataLocksCompletionTime(long jobId, DateTimeOffset endTime, CancellationToken cancellationToken);
         Task SaveDcSubmissionStatus(long jobId, bool succeeded, CancellationToken cancellationToken);
         Task<List<OutstandingJobResult>>GetOutstandingOrTimedOutJobs(long? dcJobId,DateTimeOffset startTime, CancellationToken cancellationToken);
-        bool DoSubmissionSummariesExistForJobs(List<long?> dcJobIds);
+        bool DoSubmissionSummariesExistForJobs(List<OutstandingJobResult> jobs);
     }
 
     public class JobsDataContext : DbContext, IJobsDataContext
@@ -183,13 +183,17 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Data
                 x.DcJobId != dcJobId &&
                  x.JobType == JobType.EarningsJob &&
                  x.StartTime > latestValidStartTime).
-                Select(x => new OutstandingJobResult(){ DcJobId = x.DcJobId, DcJobSucceeded = x.DcJobSucceeded, JobStatus = x.Status, EndTime = x.EndTime}).
+                Select(x => new OutstandingJobResult(){ DcJobId = x.DcJobId, DcJobSucceeded = x.DcJobSucceeded, JobStatus = x.Status, EndTime = x.EndTime, IlrSubmissionTime = x.IlrSubmissionTime, Ukprn = x.Ukprn }).
                 ToListAsync(cancellationToken);
         }
 
-        public bool DoSubmissionSummariesExistForJobs(List<long?> dcJobIds)
+        public bool DoSubmissionSummariesExistForJobs(List<OutstandingJobResult> jobs)
         {
-            return dcJobIds.All(x => SubmissionSummaries.Any(y => y.JobId == x));
+            var jobIdsToCheck = jobs
+                .GroupBy(x => x.Ukprn)
+                .Select(grp => grp.OrderByDescending(x => x.IlrSubmissionTime).First().DcJobId); //get the DCJobId that pertains to the latest submission for each ukprn grouping
+
+            return jobIdsToCheck.All(x => SubmissionSummaries.Any(y => y.JobId == x)); //check the summary exists for that job
         }
     }
 }
