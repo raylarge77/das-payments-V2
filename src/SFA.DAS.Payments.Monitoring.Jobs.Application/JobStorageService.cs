@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
 using SFA.DAS.Payments.Application.Infrastructure.Logging;
 using SFA.DAS.Payments.Monitoring.Jobs.Data;
@@ -65,20 +66,29 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
         public async Task SaveJobStatus(long jobId, JobStatus jobStatus, DateTimeOffset endTime, CancellationToken cancellationToken)
         {
             var job = await GetJob(jobId, cancellationToken).ConfigureAwait(false);
+
             if (job == null)
                 throw new InvalidOperationException($"Job not stored in the cache. Job: {jobId}");
+
             job.Status = jobStatus;
             job.EndTime = endTime;
+
             var collection = await GetJobCollection().ConfigureAwait(false);
-            await collection.AddOrUpdateAsync(reliableTransactionProvider.Current, jobId, job, (key, value) => job,
-                    TransactionTimeout, cancellationToken)
-                .ConfigureAwait(false);
+
+            await collection.AddOrUpdateWithReTryAsync(
+                    reliableTransactionProvider.Current,
+                    jobId,
+                    id => job,
+                    (key, value) => job,
+                    TransactionTimeout,
+                    cancellationToken).ConfigureAwait(false);
+
             await dataContext.SaveJobStatus(jobId, jobStatus, endTime, cancellationToken).ConfigureAwait(false);
         }
-        
+
         public async Task<List<long>> GetCurrentEarningJobs(CancellationToken cancellationToken)
         {
-            return await GetCurrentJobs(model => model.JobType == JobType.EarningsJob || model.JobType == JobType.ComponentAcceptanceTestEarningsJob ,cancellationToken);
+            return await GetCurrentJobs(model => model.JobType == JobType.EarningsJob || model.JobType == JobType.ComponentAcceptanceTestEarningsJob, cancellationToken);
         }
 
         public async Task<List<long>> GetCurrentPeriodEndExcludingStartJobs(CancellationToken cancellationToken)
@@ -88,15 +98,15 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
                 return model.JobType == JobType.PeriodEndRunJob ||
                        model.JobType == JobType.PeriodEndStopJob ||
                        model.JobType == JobType.ComponentAcceptanceTestMonthEndJob;
-            },cancellationToken);
+            }, cancellationToken);
         }
-        
+
         public async Task<List<long>> GetCurrentPeriodEndStartJobs(CancellationToken cancellationToken)
         {
             return await GetCurrentJobs(model =>
             {
                 return model.JobType == JobType.PeriodEndStartJob;
-            },cancellationToken);
+            }, cancellationToken);
         }
 
         private async Task<List<long>> GetCurrentJobs(Func<JobModel, bool> filter, CancellationToken cancellationToken)
@@ -110,7 +120,7 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
                 cancellationToken.ThrowIfCancellationRequested();
                 var job = enumerator.Current.Value;
                 if (job.Status == JobStatus.InProgress && job.DcJobId.HasValue & filter(job))
-                        jobs.Add(job.DcJobId.Value);
+                    jobs.Add(job.DcJobId.Value);
             }
 
             return jobs;
@@ -251,6 +261,35 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
         {
             await dataContext.SaveDataLocksCompletionTime(jobId, endTime, cancellationToken).ConfigureAwait(
                 false);
+        }
+    }
+
+    public static class ReliableDictionaryExtensions
+    {
+        public static async Task<TValue> AddOrUpdateWithReTryAsync<TKey, TValue>(
+            this IReliableDictionary2<TKey, TValue> cache,
+            ITransaction transaction,
+            TKey key,
+            Func<TKey, TValue> addValueFactory,
+            Func<TKey, TValue, TValue> updateValueFactory,
+            TimeSpan timeout,
+            CancellationToken cancellationToken) where TKey : IComparable<TKey>, IEquatable<TKey>
+        {
+            var retryCount = 3;
+            while (retryCount > 0)
+            {
+                try
+                {
+                    return await cache.AddOrUpdateAsync(transaction, key, addValueFactory, updateValueFactory, timeout, cancellationToken);
+                }
+                catch
+                {
+                    await Task.Delay(100, cancellationToken);
+                    retryCount--;
+                }
+            }
+
+            throw new ApplicationException("Error adding or Updating Job to Cache");
         }
     }
 }
