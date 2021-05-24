@@ -60,34 +60,20 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.Handlers
 
                 var jobIdToWaitFor = message.JobId;
 
-                if (taskType == PeriodEndTaskType.PeriodEndReports ||
-                    taskType == PeriodEndTaskType.PeriodEndSubmissionWindowValidation)
+                var existingNonFailedJobId = await jobsDataContext.GetNonFailedDcJobId(GetJobType(taskType), periodEndEvent.CollectionPeriod.AcademicYear, periodEndEvent.CollectionPeriod.Period);
+
+                if (existingNonFailedJobId.GetValueOrDefault() == 0)
                 {
                     await RecordPeriodEndJob(taskType, periodEndEvent).ConfigureAwait(false);
+
                     var endpointInstance = await endpointInstanceFactory.GetEndpointInstance();
                     await endpointInstance.Publish(periodEndEvent);
-                    logger.LogInfo(
-                        $"Finished publishing the period end event. Name: {periodEndEvent.GetType().Name}, JobId: {periodEndEvent.JobId}, Collection Period: {periodEndEvent.CollectionPeriod.Period}-{periodEndEvent.CollectionPeriod.AcademicYear}.");
+                    logger.LogInfo($"Finished publishing the period end event. Name: {periodEndEvent.GetType().Name}, JobId: {periodEndEvent.JobId}, Collection Period: {periodEndEvent.CollectionPeriod.Period}-{periodEndEvent.CollectionPeriod.AcademicYear}.");
                 }
                 else
                 {
-                    var existingNonFailedJobId = await jobsDataContext.GetNonFailedDcJobId(GetJobType(taskType),
-                        periodEndEvent.CollectionPeriod.AcademicYear, periodEndEvent.CollectionPeriod.Period);
-
-                    if (existingNonFailedJobId.GetValueOrDefault() == 0)
-                    {
-                        await RecordPeriodEndJob(taskType, periodEndEvent).ConfigureAwait(false);
-
-                        var endpointInstance = await endpointInstanceFactory.GetEndpointInstance();
-                        await endpointInstance.Publish(periodEndEvent);
-                        logger.LogInfo(
-                            $"Finished publishing the period end event. Name: {periodEndEvent.GetType().Name}, JobId: {periodEndEvent.JobId}, Collection Period: {periodEndEvent.CollectionPeriod.Period}-{periodEndEvent.CollectionPeriod.AcademicYear}.");
-                    }
-                    else
-                    {
-                        jobIdToWaitFor = existingNonFailedJobId.GetValueOrDefault();
-                        logger.LogWarning($"Job already exists, will not be published. Name: {periodEndEvent.GetType().Name}, JobId: {periodEndEvent.JobId}, Collection Period: {periodEndEvent.CollectionPeriod.Period}-{periodEndEvent.CollectionPeriod.AcademicYear}.");
-                    }
+                    jobIdToWaitFor = existingNonFailedJobId.GetValueOrDefault();
+                    logger.LogWarning($"Job already exists, will not be published. Name: {periodEndEvent.GetType().Name}, JobId: {periodEndEvent.JobId}, Collection Period: {periodEndEvent.CollectionPeriod.Period}-{periodEndEvent.CollectionPeriod.AcademicYear}.");
                 }
 
                 // TODO: This is a temporary workaround to enable the PeriodEndStart and PeriodEndStop messages to return true as otherwise the service will
