@@ -75,13 +75,8 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
 
             var collection = await GetJobCollection().ConfigureAwait(false);
 
-            await collection.AddOrUpdateWithReTryAsync(
-                    reliableTransactionProvider.Current,
-                    jobId,
-                    id => job,
-                    (key, value) => job,
-                    TransactionTimeout,
-                    cancellationToken).ConfigureAwait(false);
+            await collection.AddOrUpdateAsync(reliableTransactionProvider.Current, jobId, id => job, (key, value) => job, TransactionTimeout, cancellationToken)
+                .ConfigureAwait(false);
 
             await dataContext.SaveJobStatus(jobId, jobStatus, endTime, cancellationToken).ConfigureAwait(false);
         }
@@ -261,35 +256,6 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
         {
             await dataContext.SaveDataLocksCompletionTime(jobId, endTime, cancellationToken).ConfigureAwait(
                 false);
-        }
-    }
-
-    public static class ReliableDictionaryExtensions
-    {
-        public static async Task<TValue> AddOrUpdateWithReTryAsync<TKey, TValue>(
-            this IReliableDictionary2<TKey, TValue> cache,
-            ITransaction transaction,
-            TKey key,
-            Func<TKey, TValue> addValueFactory,
-            Func<TKey, TValue, TValue> updateValueFactory,
-            TimeSpan timeout,
-            CancellationToken cancellationToken) where TKey : IComparable<TKey>, IEquatable<TKey>
-        {
-            var retryCount = 3;
-            while (retryCount > 0)
-            {
-                try
-                {
-                    return await cache.AddOrUpdateAsync(transaction, key, addValueFactory, updateValueFactory, timeout, cancellationToken);
-                }
-                catch
-                {
-                    await Task.Delay(100, cancellationToken);
-                    retryCount--;
-                }
-            }
-
-            throw new ApplicationException("Error adding or Updating Job to Cache");
         }
     }
 }
