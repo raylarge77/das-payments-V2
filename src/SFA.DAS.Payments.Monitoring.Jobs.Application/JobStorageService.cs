@@ -17,7 +17,7 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
         private readonly IReliableStateManagerTransactionProvider reliableTransactionProvider;
         private readonly IJobsDataContext dataContext;
         private readonly IPaymentLogger logger;
-        private static readonly TimeSpan TransactionTimeout = new TimeSpan(0, 0, 4);
+        private static readonly TimeSpan TransactionTimeout = new TimeSpan(0, 4, 0);
 
         public const string JobCacheKey = "jobs";
         public const string JobStatusCacheKey = "job_status";
@@ -71,7 +71,7 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
             job.EndTime = endTime;
             var collection = await GetJobCollection().ConfigureAwait(false);
             await collection.AddOrUpdateAsync(reliableTransactionProvider.Current, jobId, job, (key, value) => job,
-                    TransactionTimeout.Add(TimeSpan.FromMinutes(4)), 
+                    TransactionTimeout, 
                     cancellationToken)
                 .ConfigureAwait(false);
             await dataContext.SaveJobStatus(jobId, jobStatus, endTime, cancellationToken).ConfigureAwait(false);
