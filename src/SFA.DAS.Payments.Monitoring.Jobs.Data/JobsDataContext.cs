@@ -15,7 +15,7 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Data
     public interface IJobsDataContext
     {
         Task SaveNewJob(JobModel jobDetails, CancellationToken cancellationToken = default(CancellationToken));
-        Task<long?> GetNonFailedDcJobId(JobType jobType, short academicYear, byte collectionPeriod);
+        Task<long?> GetNonFailedDcJobId(JobType jobType, short academicYear, byte collectionPeriod, long newJobId);
         Task<long> GetJobIdFromDcJobId(long dcJobId);
         Task<JobModel> GetJobByDcJobId(long dcJobId);
         Task SaveJobSteps(List<JobStepModel> jobSteps);
@@ -68,14 +68,15 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Data
             await SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<long?> GetNonFailedDcJobId(JobType jobType, short academicYear, byte collectionPeriod)
+        public async Task<long?> GetNonFailedDcJobId(JobType jobType, short academicYear, byte collectionPeriod, long newJobId)
         {
             return await Jobs
-                .Where(x => x.JobType == jobType &&
+                .Where(x => x.DcJobId == newJobId ||
+                            (x.JobType == jobType &&
                             x.AcademicYear == academicYear &&
                             x.CollectionPeriod == collectionPeriod &&
                             (x.Status == JobStatus.Completed ||
-                            x.Status == JobStatus.InProgress))
+                            x.Status == JobStatus.InProgress)))
                 .Select(job => job.DcJobId)
                 .FirstOrDefaultAsync();
         }

@@ -47,7 +47,7 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.UnitTests
                 .Setup(svc => svc.WaitForJobToFinish(It.IsAny<long>(), It.IsAny<CancellationToken>(), It.IsAny<TimeSpan?>()))
                 .ReturnsAsync(true);
             mocker.Mock<IJobsDataContext>()
-                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>()))
+                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>(), It.IsAny<long>()))
                 .ReturnsAsync(0);
         }
 
@@ -71,7 +71,7 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.UnitTests
             long existingJobId = 124312;
             var jobContextMessage = CreatePeriodEndJobContextMessage(PeriodEndTaskType.PeriodEndStart);
             mocker.Mock<IJobsDataContext>()
-                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>()))
+                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>(), It.IsAny<long>()))
                 .ReturnsAsync(existingJobId);
 
             var handler = mocker.Create<PeriodEndJobContextMessageHandler>();
@@ -90,7 +90,7 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.UnitTests
             long existingJobId = 124312;
             var jobContextMessage = CreatePeriodEndJobContextMessage(PeriodEndTaskType.PeriodEndRun);
             mocker.Mock<IJobsDataContext>()
-                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>()))
+                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>(), It.IsAny<long>()))
                 .ReturnsAsync(existingJobId);
 
             var handler = mocker.Create<PeriodEndJobContextMessageHandler>();
@@ -107,7 +107,7 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.UnitTests
             long existingJobId = 124312;
             var jobContextMessage = CreatePeriodEndJobContextMessage(PeriodEndTaskType.PeriodEndStart);
             mocker.Mock<IJobsDataContext>()
-                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>()))
+                .Setup(x => x.GetNonFailedDcJobId(It.IsAny<JobType>(), It.IsAny<short>(), It.IsAny<byte>(), It.IsAny<long>()))
                 .ReturnsAsync(existingJobId);
 
             var handler = mocker.Create<PeriodEndJobContextMessageHandler>();

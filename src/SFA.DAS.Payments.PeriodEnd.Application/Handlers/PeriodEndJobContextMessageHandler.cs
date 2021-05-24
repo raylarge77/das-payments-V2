@@ -60,7 +60,7 @@ namespace SFA.DAS.Payments.PeriodEnd.Application.Handlers
 
                 var jobIdToWaitFor = message.JobId;
 
-                var existingNonFailedJobId = await jobsDataContext.GetNonFailedDcJobId(GetJobType(taskType), periodEndEvent.CollectionPeriod.AcademicYear, periodEndEvent.CollectionPeriod.Period);
+                var existingNonFailedJobId = await jobsDataContext.GetNonFailedDcJobId(GetJobType(taskType), periodEndEvent.CollectionPeriod.AcademicYear, periodEndEvent.CollectionPeriod.Period, message.JobId);
 
                 if (existingNonFailedJobId.GetValueOrDefault() == 0)
                 {
