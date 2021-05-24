@@ -71,7 +71,8 @@ namespace SFA.DAS.Payments.Monitoring.Jobs.Application
             job.EndTime = endTime;
             var collection = await GetJobCollection().ConfigureAwait(false);
             await collection.AddOrUpdateAsync(reliableTransactionProvider.Current, jobId, job, (key, value) => job,
-                    TransactionTimeout, cancellationToken)
+                    TransactionTimeout.Add(TimeSpan.FromMinutes(4)), 
+                    cancellationToken)
                 .ConfigureAwait(false);
             await dataContext.SaveJobStatus(jobId, jobStatus, endTime, cancellationToken).ConfigureAwait(false);
         }
