@@ -1,39 +1,71 @@
-name: $(VersionNumberMajor).$(VersionNumberMinor)$(Rev:.rrrr)
+name: ${{ parameters.VersionNumberMajor }}.${{ parameters.VersionNumberMinor }}$(Rev:.rrrr)
 
-resources:
-- repo: self
-  fetchDepth: 15
+
+parameters:
+- name: VersionNumberMajor
+  displayName: 'Version Number : Major'
+  type: string
+  default: '0'  
+  
+- name: VersionNumberMinor
+  displayName: 'Version Number : Minor'
+  type: string
+  default: '0'  
+  
+- name: BuildConfiguration
+  displayName: Release or Debug
+  type: string
+  default: Release
+  values:
+  - Release
+  - Debug
+
+- name: BuildPool
+  displayName: 'Build Pool'
+  type: string
+  default: 'DCT Build Pool'
+  values:
+  - 'DCT Build Pool'
+  - 'DCT'
+  
+- name: BuildPoolDemand
+  displayName: 'Build Pool Demand'
+  type: string
+  default: 'IsBuildServer'
+  values:
+  - 'IsBuildServer'
+  - 'IsBuildServerDAS'
+  - 'IsBuildServer_Old'
+  - 'IsBuildServer_TEST'
 
 variables:  
-  VersionNumberMajor: '0'
-  VersionNumberMinor: '0'
-  BuildConfiguration: 'Release'
+  "Nuget.Feed": 'dct-pkg'  
   BuildPlatform: 'Any CPU'
   BuildPlatformX64: 'x64'  
 
 pool:
-  name: DCT
+  name: ${{ parameters.BuildPool }} 
   demands:
-  - IsBuildServer
-  - IsBuildServerDAS
-  - msbuild
+  - ${{ parameters.BuildPoolDemand }} 
 
 steps:
-- task: DotNetCoreInstaller@0
-  displayName: 'Use .NET Core sdk 2.2.106'
-  inputs:
-    version: 2.2.106
+# - task: DotNetCoreInstaller@0
+#   displayName: 'Use .NET Core sdk 2.2.106'
+#   inputs:
+#     version: 2.2.106
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore Provider Payments Messages'
   inputs:
     command: restore
     projects: src/SFA.DAS.Payments.ProviderPayments.Messages/SFA.DAS.Payments.ProviderPayments.Messages.csproj
+    vstsFeed: '${{ parameters.NugetFeed }}'
 
 - task: DotNetCoreCLI@2
   displayName: 'Build Provider Payments Messages'
   inputs:
     projects: src/SFA.DAS.Payments.ProviderPayments.Messages/SFA.DAS.Payments.ProviderPayments.Messages.csproj
+    arguments: '--configuration ${{ parameters.BuildConfiguration }} --no-restore -p:version="${{ parameters.BuildNumber}}" -p:FileVersion="${{ parameters.BuildFileVersion}}"'      
   enabled: false
 
 - task: DotNetCoreCLI@2
@@ -41,6 +73,7 @@ steps:
   inputs:
     command: pack
     packagesToPack: src/SFA.DAS.Payments.ProviderPayments.Messages/SFA.DAS.Payments.ProviderPayments.Messages.csproj
+    arguments: '--configuration ${{ parameters.BuildConfiguration }} --no-restore -p:version="${{ parameters.BuildNumber}}" -p:FileVersion="${{ parameters.BuildFileVersion}}"'
     versioningScheme: byBuildNumber
 
 - task: CopyFiles@2

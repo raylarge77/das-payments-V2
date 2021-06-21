@@ -1,39 +1,69 @@
-name: $(VersionNumberMajor).$(VersionNumberMinor)$(Rev:.rrrr)
+name: ${{ parameters.VersionNumberMajor }}.${{ parameters.VersionNumberMinor }}$(Rev:.rrrr)
 
-resources:
-- repo: self
-  fetchDepth: 15
+
+parameters:
+  - name: VersionNumberMajor
+    displayName: 'Version Number : Major'
+    type: string
+    default: '0'  
+    
+  - name: VersionNumberMinor
+    displayName: 'Version Number : Minor'
+    type: string
+    default: '0'  
+    
+  - name: BuildConfiguration
+    displayName: Release or Debug
+    type: string
+    default: Release
+    values:
+    - Release
+    - Debug
+  
+  - name: BuildPool
+    displayName: 'Build Pool'
+    type: string
+    default: 'DCT Build Pool'
+    values:
+    - 'DCT Build Pool'
+    - 'DCT'
+    
+  - name: BuildPoolDemand
+    displayName: 'Build Pool Demand'
+    type: string
+    default: 'IsBuildServer'
+    values:
+    - 'IsBuildServer'
+    - 'IsBuildServerDAS'
+    - 'IsBuildServer_Old'
+    - 'IsBuildServer_TEST'
 
 variables:  
-  VersionNumberMajor: '0'
-  VersionNumberMinor: '0'
-  BuildConfiguration: 'Release'
+  "Nuget.Feed": 'dct-pkg'  
   BuildPlatform: 'Any CPU'
   BuildPlatformX64: 'x64'  
   ServiceFabricProjectFolderNames: ['SFA.DAS.Payments.EarningEvents.ServiceFabric', 'SFA.DAS.Payments.FundingSource.ServiceFabric', 'SFA.DAS.Payments.RequiredPayments.ServiceFabric', 'SFA.DAS.Payments.ProviderPayments.ServiceFabric', 'SFA.DAS.Payments.Monitoring.ServiceFabric', 'SFA.DAS.Payments.Audit.ServiceFabric', 'SFA.DAS.Payments.DataLocks.ServiceFabric']
   PrivateSettingsCheckerURL: 'https://raw.githubusercontent.com/SkillsFundingAgency/DC-Tools/master/Scripts/PrivateSettingsChecker.ps1'
 
 pool:
-  name: DCT
+  name: ${{ parameters.BuildPool }} 
   demands:
-  - IsBuildServer
-  - IsBuildServerDAS
-  - msbuild
+  - ${{ parameters.BuildPoolDemand }} 
 
 #Your build pipeline references the ‘BuildConfiguration’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
 #Your build pipeline references the ‘BuildConfiguration’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
 #Your build pipeline references the ‘BuildConfiguration’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
 
 steps:
-- task: DotNetCoreInstaller@0
-  displayName: 'Use .NET Core sdk 2.2.106'
-  inputs:
-    version: 2.2.106
+# - task: DotNetCoreInstaller@0
+#   displayName: 'Use .NET Core sdk 2.2.106'
+#   inputs:
+#     version: 2.2.106
 
-- task: NuGetToolInstaller@0
-  displayName: 'Use NuGet <=4.8.0'
-  inputs:
-    versionSpec: '<=4.8.0'
+# - task: NuGetToolInstaller@0
+#   displayName: 'Use NuGet <=4.8.0'
+#   inputs:
+#     versionSpec: '<=4.8.0'
 
 - powershell: |
    $WebClient = New-Object System.Net.WebClient
@@ -53,14 +83,14 @@ steps:
 - task: NuGetCommand@2
   displayName: 'NuGet restore'
   inputs:
-    vstsFeed: '1d5deb2d-cf8b-4bb1-b147-d13bc246e3f4'
+    vstsFeed: '$(Nuget.Feed)'
 
 - task: MSBuild@1
   displayName: 'Build sln'
   inputs:
     msbuildArchitecture: x64
     platform: '$(BuildPlatform)'
-    configuration: '$(BuildConfiguration)'
+    configuration: '${{ parameters.BuildConfiguration }}'
     msbuildArguments: '/p:version=$(Build.BuildNumber) /p:FileVersion=$(Build.BuildNumber)'
     clean: true
     maximumCpuCount: true
@@ -72,7 +102,7 @@ steps:
   inputs:
     solution: '**/SFA.DAS.Payments.Database.sqlproj'
     platform: '$(BuildPlatform)'
-    configuration: '$(BuildConfiguration)'
+    configuration: '${{ parameters.BuildConfiguration }}'
     msbuildArguments: '/p:version=$(Build.BuildNumber) /p:FileVersion=$(Build.BuildNumber)'
     clean: true
     maximumCpuCount: true
