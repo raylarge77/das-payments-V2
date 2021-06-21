@@ -47,9 +47,9 @@ stages:
       displayName: Build Artifacts
       
       pool:
-        name: ${{ parameters.AgentPool }} 
+        name: ${{ parameters.BuildPool }} 
         demands:
-        - ${{ parameters.AgentPoolDemand }} 
+        - ${{ parameters.BuildPoolDemand }} 
             
       variables:  
         "Nuget.Feed": 'dct-pkg'  
