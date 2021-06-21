@@ -52,7 +52,7 @@ stages:
         - ${{ parameters.BuildPoolDemand }} 
             
       variables:  
-        "Nuget.Feed": 'dct-pkg'  
+        NugetFeed: 'dct-pkg'  
         BuildPlatform: 'Any CPU'
         BuildPlatformX64: 'x64'        
         ServiceFabricProjectFolderNames: ['SFA.DAS.Payments.EarningEvents.ServiceFabric', 'SFA.DAS.Payments.FundingSource.ServiceFabric', 'SFA.DAS.Payments.RequiredPayments.ServiceFabric', 'SFA.DAS.Payments.ProviderPayments.ServiceFabric', 'SFA.DAS.Payments.Monitoring.ServiceFabric', 'SFA.DAS.Payments.Audit.ServiceFabric', 'SFA.DAS.Payments.DataLocks.ServiceFabric']
@@ -90,7 +90,7 @@ stages:
       - task: NuGetCommand@2
         displayName: 'NuGet restore'
         inputs:
-          vstsFeed: '$(Nuget.Feed)'
+          vstsFeed: '$(NugetFeed)'
 
       - task: MSBuild@1
         displayName: 'Build sln'

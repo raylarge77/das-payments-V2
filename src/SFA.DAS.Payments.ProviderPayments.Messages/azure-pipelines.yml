@@ -53,7 +53,7 @@ stages:
       - ${{ parameters.BuildPoolDemand }} 
           
     variables:  
-      "Nuget.Feed": 'dct-pkg'  
+      NugetFeed: 'dct-pkg'  
       BuildPlatform: 'Any CPU'
       BuildPlatformX64: 'x64'  
 
@@ -68,7 +68,7 @@ stages:
       inputs:
         command: restore
         projects: src/SFA.DAS.Payments.ProviderPayments.Messages/SFA.DAS.Payments.ProviderPayments.Messages.csproj
-        vstsFeed: '${{ parameters.NugetFeed }}'
+        vstsFeed: '$(NugetFeed)'
 
     - task: DotNetCoreCLI@2
       displayName: 'Build Provider Payments Messages'
