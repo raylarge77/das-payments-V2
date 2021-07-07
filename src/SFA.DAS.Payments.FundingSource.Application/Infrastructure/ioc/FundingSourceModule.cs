@@ -77,7 +77,6 @@ namespace SFA.DAS.Payments.FundingSource.Application.Infrastructure.Ioc
                 })
                 .As<IAccountApiConfiguration>()
                 .InstancePerLifetimeScope();
-
             builder.RegisterType<AccountApiClient>().AsImplementedInterfaces().InstancePerLifetimeScope();
 
             builder.Register((c, p) =>
